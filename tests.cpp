@@ -21,6 +21,20 @@ private:
   int _age = 0;
 };
 
+class Person {
+public:
+  Person(std::string name, int age) : _name(name), _age(age) {}
+  std::string getName() const {
+    return _name;
+  }
+  int getAge() const {
+    return _age;
+  }
+private:
+  std::string _name = "default";
+  int _age = 0;
+};
+
 TEST_CASE("Default constrctor. Empty vector") {
   size_t size = 0;
   Vector<int> vector;
@@ -197,6 +211,9 @@ TEST_CASE("Reserve and shrink_to_fit") {
     REQUIRE(vector[i] == expec_vec[i]);
 
   REQUIRE_THROWS_AS(vector.reserve(vector.max_size() + 1), std::length_error);
+
+  vector.reserve(vector.capacity() - 1);
+  REQUIRE(vector.capacity() == expec_vec.capacity());
 }
 
 TEST_CASE("Clear") {
@@ -288,6 +305,16 @@ TEST_CASE("Insert with ilist") {
     REQUIRE(vector[i] == expec_vec[i]);
 }
 
+TEST_CASE("Emplace") {
+  Vector<int> vector = { 4, 6, 8 };
+  vector.emplace(vector.begin() + 2, 9);
+  
+  std::vector<int> expected_vector = { 4, 6, 9, 8 };
+  REQUIRE(vector.size() == 4);
+  for (size_t i = 0; i < vector.size(); i++)
+    REQUIRE(vector[i] == expected_vector[i]);
+}
+
 TEST_CASE("Operator= copy") {
   size_t size = 3;
   Vector<double> vector = { 9.5, 36.6, -3.14 };
@@ -366,8 +393,9 @@ TEST_CASE("Emplace back") {
   std::string name = "emplaced";
   Vector<NonCopy> vector;
   vector.emplace_back(NonCopy(name, 10));
+  vector.emplace_back(name, 10);
 
-  REQUIRE(vector.size() == 1);
+  REQUIRE(vector.size() == 2);
   REQUIRE(vector[0].getName() == "emplaced");
   REQUIRE(vector[0].getAge() == 10);
 }
@@ -455,4 +483,113 @@ TEST_CASE("Sort") {
   std::vector<int> expected_vector = { -45, 0, 3, 3, 4, 5, 12 };
   for (size_t i = 0; i < vector.size(); i++)
     REQUIRE(vector[i] == expected_vector[i]);
+}
+
+TEST_CASE("Using custom iterators for std::vector") {
+  SECTION("Constructor") {
+    Vector<int> my_vector = { 12, 3, 5, 0, -45, 4, 3 };
+    std::vector<int> std_vector(my_vector.begin() + 1, my_vector.end() - 1);
+
+    std::vector<int> expected_vector = { 3, 5, 0, -45, 4, 3 };
+    for (size_t i = 0; i < std_vector.size(); i++)
+      REQUIRE(std_vector[i] == expected_vector[i]);
+  }
+
+  SECTION("Assign") {
+    Vector<double> my_vector = { 55.5, 89.5, 23.5 };
+    std::vector<double> std_vector = { 3.14, 96.99, 88, 78, 0 };
+    std_vector.assign(my_vector.begin() + 1, my_vector.end());
+
+    std::vector<double> expected_vector = { 89.5, 23.5 };
+    for (size_t i = 0; i < std_vector.size(); i++)
+      REQUIRE(std_vector[i] == expected_vector[i]);
+  }
+
+  SECTION("Insert") {
+    std::vector<std::string> std_vector = { "Hello", ",", "World", "!" };
+    Vector<std::string> my_vector = { "insane", "and", "lonely" };
+    std_vector.insert(std_vector.begin() + 1, my_vector.begin(), my_vector.end());
+
+    std::vector<std::string> expected_vector = { "Hello", "insane", "and", "lonely", ",", "World", "!"  };
+    for (size_t i = 0; i < std_vector.size(); i++)
+      REQUIRE(std_vector[i] == expected_vector[i]);
+
+  }
+}
+
+TEST_CASE("Iterator") {
+  Vector<int> vector{1, 2, 3, 4, 5 ,6};
+  auto first = vector.begin();
+  auto last = vector.end();
+  REQUIRE(first < last);
+
+  first++;
+  REQUIRE(last > first);
+
+  last--;
+  REQUIRE(last >= first);
+  
+  first++;
+  REQUIRE(first <= last);
+  
+  REQUIRE(first != last);
+
+  first += 1;
+  last -= 2;
+  REQUIRE(first == last);
+}
+
+TEST_CASE("Vector's compare") {
+  SECTION("EQUAL") {
+    Vector<int> first = { 5, 6, 8, 9 };
+    Vector<int> second = { 5, 6, 8, 9 };
+    Vector<int> thrid = { 1, 2, 3};
+    REQUIRE(first == second);
+    REQUIRE((first == thrid) == false);
+  }
+
+  SECTION("Not equal") {
+    Vector<int> first = { 5, 6, 8, 9 };
+    Vector<int> second = { 1, 2, 3, 4 };
+    REQUIRE(first != second);
+  }
+
+  SECTION("Less") {
+    Vector<int> first = { 1, 2, 3, 4 };
+    Vector<int> second = { 5, 6, 8, 9 };
+    REQUIRE(first < second);
+  }
+
+  SECTION("More") {
+    Vector<int> first = { 5, 6, 8, 9 };
+    Vector<int> second = { 1, 2, 3, 4 };
+    REQUIRE(first > second);
+  }
+
+  SECTION("Less or equal") {
+    Vector<int> first = { 1, 2, 3, 4 };
+    Vector<int> second = { 5, 6, 8, 9 };
+    Vector<int> thrid = { 1, 2, 3, 4 };
+    REQUIRE(first <= second);
+    REQUIRE(first <= thrid);
+  }
+
+  SECTION("More or equal") {
+    Vector<int> first = { 5, 6, 8, 9 };
+    Vector<int> second = { 1, 2, 3, 4 };
+    Vector<int> thrid = { 5, 6, 8, 9 };
+    REQUIRE(first >= second);
+    REQUIRE(first >= thrid);
+  }
+}
+
+TEST_CASE("Swap non member") {
+  Vector<int> odd_vector = { 2, 4, 6 };
+  Vector<int> no_odd_vector = { 1, 3, 5 };
+
+  swap(odd_vector, no_odd_vector);
+  for (size_t i = 0; i < odd_vector.size(); i++) {
+    REQUIRE(odd_vector[i] % 2 == 1);
+    REQUIRE(no_odd_vector[i] % 2 == 0);
+  }
 }

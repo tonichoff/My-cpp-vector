@@ -23,7 +23,6 @@ public:
   using iterator_category = std::random_access_iterator_tag;
   using size_type = std::size_t;
 
-  Iterator() {}
   Iterator(T* ptr) : _ptr(ptr) {}
   Iterator(const Iterator& other) : _ptr(other._ptr) {}
   Iterator(const Iterator&& other) : _ptr(std::move(other._ptr)) {}
@@ -51,7 +50,7 @@ public:
 
   Iterator& operator+=(size_type count) {
     _ptr += count;
-    return *this
+    return *this;
   }
 
   Iterator& operator--() {
@@ -67,7 +66,7 @@ public:
 
   Iterator& operator-=(size_type count) {
     _ptr -= count;
-    return *this
+    return *this;
   }
 
   friend Iterator operator+(const Iterator& other, size_type count) {

@@ -71,7 +71,7 @@ public:
       std::allocator_traits<Allocator>::construct(_alloc, _ptr + i, other[i]);
   }
 
-  Vector(const Vector& other, const Allocator& alloc)
+  Vector(const Vector& other, const Allocator& )
     : _size(other._size),
       _capacity(other._capacity),
       _alloc(alloc),
@@ -94,10 +94,6 @@ public:
 
   Vector(std::initializer_list<T> init, const Allocator& alloc = Allocator())
     : Vector(init.begin(), init.end(), alloc) {}
-
-  //~Vector() {
-  //  std::allocator_traits<Allocator>::deallocate(_alloc, _ptr, _capacity);
-  //}
 
   //operator= and assign
   Vector& operator=(const Vector& other) {
@@ -289,13 +285,13 @@ public:
     size_type index = pos - begin();
     if (new_size > _capacity)
       reallocate(new_size);
-    auto it = begin() + index;
-    std::copy_backward(it, end(), begin() + new_size);
-    std::fill(it, it + count, value);
+    auto insert_iter = begin() + index;
+    std::copy_backward(insert_iter, end(), begin() + new_size);
+    std::fill(insert_iter, insert_iter + count, value);
 
     _capacity = new_size;
     _size = new_size;
-    return it;
+    return insert_iter;
   }
 
   template< class InputIt >
@@ -304,9 +300,9 @@ public:
     size_type index = pos - begin();
     if (new_size > _capacity)
       reallocate(new_size);
-    auto it = begin() + index;
-    std::copy_backward(it, end(), begin() + new_size);
-    std::copy(first, last, it);
+    auto insert_iter = begin() + index;
+    std::copy_backward(insert_iter, end(), begin() + new_size);
+    std::copy(first, last, insert_iter);
 
     _capacity = new_size;
     _size = new_size;
@@ -319,22 +315,17 @@ public:
 
   template<class... Args>
   iterator emplace(const_iterator pos, Args&&... args) {
-    size_type new_size = _size + 1;
     size_type index = pos - begin();
-    if (new_size > _capacity)
-      reallocate(new_size);
-    auto it = begin() + index;
-    std::copy_backward(it, end(), _ptr + _size);
 
-    std::allocator_traits<Allocator>::construct(
-      _alloc, 
-      _ptr + index, 
-      std::forward<Args>(args)...
-    );
+    size_type new_size = _size + 1;
+    reallocate(new_size);
 
-    _capacity = new_size;
-    _size = new_size;
-    return it;
+    auto iter = begin() + index;
+    for (size_t i = _size; i >= index; i--)
+      _ptr[i] = _ptr[i - 1];
+    _alloc.construct(&*iter, std::forward<Args>(args)...);
+    _size++;
+    return iter;
   }
 
   iterator erase(const_iterator pos) {
@@ -409,8 +400,7 @@ private:
   void reallocate(size_type new_cap) {
     if (new_cap > max_size())
       throw std::length_error("New capacity over limit");
-    pointer new_ptr = nullptr;
-    new_ptr = std::allocator_traits<Allocator>::allocate(_alloc, new_cap);
+    pointer new_ptr = std::allocator_traits<Allocator>::allocate(_alloc, new_cap);
     for (auto it = begin(); it != end(); it++)
       std::allocator_traits<Allocator>::construct(
         _alloc,
@@ -461,9 +451,4 @@ bool operator>=(const Vector<T, Allocator>& lhs, const Vector<T, Allocator>& rhs
 template <class T, class Allocator>
 bool operator<=(const Vector<T, Allocator>& lhs, const Vector<T, Allocator>& rhs) {
   return !(rhs < lhs);
-}
-
-template <class T, class Allocator>
-void swap(const Vector<T, Allocator>& lhs, const Vector<T, Allocator>& rhs) noexcept {
-  lhs.swap(rhs);
 }
